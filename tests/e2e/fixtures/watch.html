@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Crunchyroll simulado (prueba)</title>
+  <style>
+    body { margin: 0; background: #000; font-family: sans-serif; color: #fff; }
+    .player { position: relative; width: 1280px; height: 720px; margin: 0 auto; background: #000; }
+    video { width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <div class="player"><video id="v" src="/video.mp4" preload="auto" playsinline></video></div>
+  <script>
+    // Igual que el reproductor real: pide la reproducción y recibe las URLs de subtítulos.
+    fetch("/playback/v3/TEST123/web/chrome/play")
+      .then((r) => r.json())
+      .then(() => { window.__playbackDone = true; });
+    // El reproductor real atiende la barra espaciadora: aquí se registra si le llegó.
+    window.__outsideSeen = 0;
+    document.getElementById("v").addEventListener("click", () => {
+      window.__outsideSeen++;
+      const v = document.getElementById("v");
+      if (v.paused) v.play(); else v.pause();
+    });
+    window.__spaceSeen = 0;
+    document.addEventListener("keydown", (e) => { if (e.code === "Space") window.__spaceSeen++; });
+  </script>
+</body>
+</html>

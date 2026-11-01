@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="../icons/icon-32.png" alt="" width="24" height="24">
+    <h1>Inglés con Crunchyroll</h1>
+    <label class="switch" title="Activar / pausar"><input type="checkbox" id="enabled"><span></span></label>
+  </header>
+
+  <section class="stats">
+    <div><b id="today">0</b><span>hoy</span></div>
+    <div><b id="streak">0</b><span>días seguidos</span></div>
+    <div><b id="total">0</b><span>líneas superadas</span></div>
+    <div><b id="acc">–</b><span>acierto</span></div>
+  </section>
+
+  <section>
+    <h2>Modo</h2>
+    <div class="seg" id="mode">
+      <button data-v="speak">🎤 Hablar</button>
+      <button data-v="write">⌨️ Escribir</button>
+      <button data-v="mix">🔀 Mixto</button>
+    </div>
+  </section>
+
+  <section class="grid">
+    <label>Mínimo para pasar
+      <span class="row"><input type="range" id="threshold" min="50" max="100" step="5"><output id="thresholdOut"></output></span>
+    </label>
+    <label>Practicar
+      <select id="every">
+        <option value="1">todas las líneas</option>
+        <option value="2">1 de cada 2</option>
+        <option value="3">1 de cada 3</option>
+        <option value="5">1 de cada 5</option>
+      </select>
+    </label>
+    <label>Saltar líneas de menos de
+      <select id="minWords">
+        <option value="1">1 palabra</option>
+        <option value="2">2 palabras</option>
+        <option value="3">3 palabras</option>
+        <option value="4">4 palabras</option>
+      </select>
+    </label>
+    <label>Pausar
+      <select id="pauseOffset">
+        <option value="-0.4">0,4 s antes del final</option>
+        <option value="-0.2">0,2 s antes del final</option>
+        <option value="0">justo al terminar la línea</option>
+        <option value="0.2">0,2 s después</option>
+      </select>
+    </label>
+    <label>Subtítulos para la ayuda
+      <select id="translationLang">
+        <option value="es-419">Español (Latinoamérica)</option>
+        <option value="es-ES">Español (España)</option>
+        <option value="">Ninguno</option>
+      </select>
+    </label>
+  </section>
+
+  <section class="checks">
+    <label><input type="checkbox" id="dictation"> Dictado: ocultar la línea al escribir</label>
+    <label><input type="checkbox" id="autoMic"> Abrir el micrófono al pausar</label>
+    <label><input type="checkbox" id="autoContinue"> Seguir el video al superar la línea</label>
+    <label><input type="checkbox" id="skipPassed"> No repetir líneas ya superadas</label>
+
+    <label><input type="checkbox" id="hideNativeSubs"> Ocultar los subtítulos de Crunchyroll</label>
+  </section>
+
+  <section class="episode">
+    <div id="episode">Abre un episodio en Crunchyroll.</div>
+    <button id="reset" hidden>Reiniciar progreso de este episodio</button>
+  </section>
+
+  <footer>Atajos durante el ejercicio: <kbd>Espacio</kbd>/<kbd>Enter</kbd> hablar o comprobar · <kbd>R</kbd> repetir · <kbd>L</kbd> lento</footer>
+
+  <script src="../src/settings.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

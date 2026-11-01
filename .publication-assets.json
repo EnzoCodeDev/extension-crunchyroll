@@ -1,0 +1,13 @@
+{
+  "data/CMUDICT-LICENSE": "bd4ce8e44170a5f9f481310ca85c51de3c4f851a65e679b40e603b143bd3542a",
+  "data/cmudict.txt": "460d05a0060f0af454ecdf546170976263c6deff7c65f3484cb6dca3cb9151b5",
+  "data/speak-dict.json": "72e842d9f3e6ba5d592f5933325b70bbc25b14f0b2488e9043d5a5664f948e2b",
+  "docs/screenshots/01-escritura.png": "9866c8b787417b30d8bed33af0bdcb3950bcd4b6367d330a9d2fa1976cda9ecf",
+  "docs/screenshots/02-palabras.png": "547c6e72a6b85d2d82059efc5744252d1c3a5bd8ab70c4bd3fa727a230e48db5",
+  "docs/screenshots/03-aprobada.png": "6fccd349fce2e553ba104d9d62bda8e59231d0bc6a7952ebd5c3dca37c59a781",
+  "docs/screenshots/04-ajustes.png": "c6d9ed41cbd165b6469cd65904fe50ea450a5b788722cf50079e57ab08d59ac8",
+  "icons/icon-128.png": "ac21744a1884af979485f4363ceadd0230dbc626cb176361e1797fddbbceec13",
+  "icons/icon-16.png": "c35b77aa5e2c233c200f7c5f411c245eeba46d8be50ecbef303c1524cb880f4f",
+  "icons/icon-32.png": "2abd36ed39eb6fb0b1031cb41a60063f64f0bf865700aa6258efec5ce8eab59d",
+  "icons/icon-48.png": "80c50ffe413ccf7d78073161e9db26ada152c81e1b5bdc732b7a0041360297a7"
+}
