@@ -44,9 +44,15 @@
   function normalize(text) {
     let t = " " + String(text || "").toLowerCase().trim() + " ";
     t = t.replace(/[’‘`´]/g, "'");
+    // Separa puntuación ANTES de expandir: «that's...» debe ser «that is»,
+    // no «that s». Conserva el apóstrofo hasta terminar las contracciones.
+    t = t.replace(/[^a-z0-9'\s]/g, " ");
     // Las regex de contracciones necesitan espacios a ambos lados de cada palabra.
     t = t.replace(/\s+/g, "  ");
     for (const [re, v] of CONTRACTION_RES) t = t.replace(re, v);
+    // Tras expandir contracciones, el apóstrofo restante es parte de un nombre
+    // o posesivo: Knight's → knights, no dos palabras «knight s».
+    t = t.replace(/'/g, "");
     t = t.replace(/[^a-z0-9\s]/g, " ");
     t = t.replace(/\so\s+k\s/g, " okay ").replace(/\sgood\s+bye\s/g, " goodbye ");
     const words = t.split(/\s+/).filter(Boolean).map((w) => NUMBERS[w] || SPELLINGS[w] || w);

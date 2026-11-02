@@ -1,5 +1,5 @@
 /* ============================================================
-   Práctica de inglés sobre Crunchyroll.
+   Práctica de inglés sobre Crunchyroll y YouTube.
    Al terminar cada línea de subtítulo el video se pausa: hay que decirla
    (reconocimiento de voz) o escribirla y llegar al umbral (80 %) para seguir.
    ============================================================ */
@@ -52,6 +52,11 @@
   const isEnglish = (loc) => !loc || /^en/i.test(loc);
 
   function currentEpisode() {
+    if (["youtube.com", "www.youtube.com", "m.youtube.com"].includes(location.hostname)) {
+      const id = location.pathname === "/watch" ? new URLSearchParams(location.search).get("v") :
+        location.pathname.match(/^\/(?:shorts|embed)\/([\w-]+)/)?.[1];
+      return "youtube:" + (id || "");
+    }
     const m = location.pathname.match(/\/watch\/([A-Za-z0-9]+)/);
     return m ? m[1] : location.pathname;
   }
@@ -100,6 +105,7 @@
 
       </div>
       <div class="target"></div>
+      <div class="pron-line" title="Pronunciación aproximada para hispanohablantes; entre corchetes, palabras sin pronunciación disponible" aria-label="Pronunciación aproximada" aria-live="polite" hidden></div>
       <div class="trans" aria-live="polite" hidden></div>
       <div class="write" hidden><input type="text" autocomplete="off" spellcheck="false" placeholder="Escribe lo que escuchaste…"></div>
       <div class="heard" hidden></div>
@@ -208,6 +214,9 @@
       target.innerHTML += `<div class="words">${renderWords(ex.result.words.map((w) => w.sim >= 0.999 ? w : { word: w.sim >= 0.8 ? w.word : "•".repeat(Math.max(2, w.word.length)), sim: w.sim }))}</div>`;
     }
 
+    const pron = $(".pron-line");
+    pron.hidden = !(ex.pron && (speak || ex.showText || ex.hint >= 2 || ex.passed));
+    pron.textContent = ex.pron || "";
     const trans = $(".trans");
     trans.hidden = !(ex.showTrans && (ex.trans || ex.transLoading));
     trans.textContent = ex.trans || (ex.transLoading ? "Traduciendo…" : "");
@@ -246,7 +255,9 @@
     url = window.CRENetwork.subtitleUrl(url);
     try {
       const r = await fetch(url, { credentials: "omit", redirect: "error", signal: AbortSignal.timeout(15000) });
-      if (r.ok) return await r.text();
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const text = await r.text();
+      if (text.trim()) return text;
     } catch (_) { /* CORS: probar desde el service worker */ }
     if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.sendMessage) {
       const res = await chrome.runtime.sendMessage({ type: "cre-fetch", url });
@@ -274,6 +285,7 @@
   }
 
   async function loadFromPlayback(pb) {
+    if (pb.platform === "youtube" && currentEpisode() !== "youtube:" + pb.videoId) return;
     const generation = ++playbackGeneration;
     playback = pb;
     const ep = currentEpisode();
@@ -287,7 +299,7 @@
     const track = pickTrack(pb, settings.subLang, isEnglish(pb.audioLocale));
     if (!track) {
       loadState = "error";
-      loadError = "Este episodio no tiene subtítulos en inglés";
+      loadError = "Este video no tiene subtítulos en inglés";
       if (!ex) { cues = []; targets = []; }
       renderPill();
       return;
@@ -295,7 +307,9 @@
     try {
       const text = await fetchText(track.url);
       if (!current()) return;
-      setCues(parseSubtitles(text, track.format), track.label, "ready");
+      const parsed = parseSubtitles(text, track.format);
+      if (!parsed.length) throw new Error("La pista no contiene frases utilizables");
+      setCues(parsed, track.label, "ready");
     } catch (e) {
       if (!current()) return;
       loadState = "error";
@@ -395,6 +409,12 @@
     if (v !== video) attachVideo(v);
     mountHost();
     layout();
+    // Do not practice advertisements or retain an exercise across a YouTube ad.
+    if (document.querySelector(".html5-video-player.ad-showing, .html5-video-player.ad-interrupting")) {
+      clearTimeout(preciseTimer); preciseTimer = 0;
+      if (ex) closeExercise();
+      return;
+    }
     if (!settings || !settings.enabled || !video || !targets.length) return;
     const t = video.currentTime;
     if (phase === "replay") {
@@ -418,7 +438,7 @@
   // tiempo restante dispara justo cuando termina la línea.
   function checkCue() {
     const cue = cues[targets[idx]];
-    if (!cue || !video) return;
+    if (!cue || !video || document.querySelector(".html5-video-player.ad-showing, .html5-video-player.ad-interrupting")) return;
     const at = stopAt(idx);
     const t = video.currentTime;
     if (t >= at - 0.01) {
@@ -491,6 +511,7 @@
     input.value = "";
     hidePop(true);
     if (ex.showTrans && !ex.trans) translateCurrent();
+    pronounceCurrent();
     renderExercise();
     if (mode === "speak") {
       setStatus(settings.autoMic ? "Preparando el micrófono…" : "Pulsa 🎤 Hablar (o Espacio) y di la línea.");
@@ -590,7 +611,8 @@
     if (passed) {
       ex.passed = true;
       setStatus(result.score >= 95 ? "¡Perfecto!" : "¡Bien! Línea superada.", "good");
-      if (settings.autoContinue) continueTimer = setTimeout(continueVideo, 1300);
+      clearTimeout(continueTimer);
+      if (settings.autoContinue) continueTimer = setTimeout(continueVideo, 500);
     } else {
       const diff = settings.threshold - result.score;
       const saidCount = normalize(result.transcript || "").length;
@@ -712,6 +734,16 @@
       }));
     }
     return wordCache.get(key);
+  }
+
+  function pronounceCurrent() {
+    const cur = ex;
+    if (!cur) return;
+    ask({ type: "cre-pronounce", text: cur.cue.practice || cur.cue.text }).then((r) => {
+      if (ex !== cur) return; // una respuesta anterior no puede cambiar otra frase
+      cur.pron = r && r.ok ? r.text : "";
+      renderExercise();
+    });
   }
 
   function translateCurrent() {
@@ -973,14 +1005,15 @@
   });
 
   // Navegación interna (SPA): al cambiar de episodio se reinicia el estado.
-  let lastPath = location.pathname;
+  let lastPath = currentEpisode();
   setInterval(() => {
-    if (location.pathname !== lastPath) {
-      lastPath = location.pathname;
-      const ep = currentEpisode();
+    const ep = currentEpisode();
+    if (ep !== lastPath) {
+      lastPath = ep;
       if (ep !== episodeId) switchEpisode(ep);
+      window.postMessage({ source: "cre-content", type: "get-playback" }, location.origin);
     }
-  }, 700);
+  }, 200);
 
   (async function init() {
     settings = await loadSettings();

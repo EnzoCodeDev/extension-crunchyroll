@@ -25,7 +25,7 @@ popup/popup.html popup/popup.js popup/popup.css
 icons/icon-16.png icons/icon-32.png icons/icon-48.png icons/icon-128.png
 data/CMUDICT-LICENSE data/cmudict.txt data/speak-dict.json
 tools/build_dict.py tools/make_icons.py tools/check_publication.py
-tests/logic.test.js tests/security.test.js tests/test_publication.py
+tests/logic.test.js tests/security.test.js tests/youtube.test.js tests/test_publication.py
 tests/e2e/run.mjs tests/e2e/fixtures/en.vtt tests/e2e/fixtures/es.ass
 tests/e2e/fixtures/watch.html
 docs/screenshots/01-escritura.png docs/screenshots/02-palabras.png

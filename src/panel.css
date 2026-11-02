@@ -68,6 +68,7 @@ button:disabled { opacity: .45; cursor: default; }
 .w.meh { color: var(--meh); background: rgba(251, 191, 36, .1); }
 .w.bad { color: var(--bad); background: rgba(248, 113, 113, .12); text-decoration: underline dotted; }
 .trans { margin-top: 6px; color: var(--muted); font-style: italic; }
+.pron-line { margin-top: 6px; color: #9cc7ff; font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; }
 
 .write { margin-top: 12px; }
 .write input {

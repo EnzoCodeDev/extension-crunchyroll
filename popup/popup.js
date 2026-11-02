@@ -44,8 +44,8 @@
       const ep = (await store.get(key))[key];
       const done = ep ? Object.keys(ep.passed).length : 0;
       const text = status.state === "ready" || status.state === "manual"
-        ? `Episodio actual: ${done} de ${status.lines} líneas superadas · ${status.track}`
-        : status.state === "error" ? "Este episodio no tiene subtítulos en inglés." : "Esperando los subtítulos del episodio…";
+        ? `Video actual: ${done} de ${status.lines} líneas superadas · ${status.track}`
+        : status.state === "error" ? "Este video no tiene subtítulos en inglés." : "Esperando los subtítulos del video…";
       $("episode").textContent = text;
       $("reset").hidden = !done;
       $("reset").onclick = async () => {

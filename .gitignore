@@ -50,6 +50,7 @@
 !/tests/e2e/run.mjs
 !/tests/logic.test.js
 !/tests/security.test.js
+!/tests/youtube.test.js
 !/tests/test_publication.py
 !/tools/build_dict.py
 !/tools/check_publication.py

@@ -6,7 +6,7 @@ Esta extensión no tiene servidor propio ni añade analítica. Eso **no signific
 
 | Operación | Qué utiliza o envía | Destino y persistencia |
 | --- | --- | --- |
-| Leer subtítulos | URLs de pistas y archivos de subtítulos que entrega el reproductor | Crunchyroll o VRV; sin cookies añadidas en las peticiones de la extensión. Los textos se mantienen en memoria durante la práctica. |
+| Leer subtítulos | URLs de pistas y archivos de subtítulos que entrega el reproductor | Crunchyroll, VRV, el CDN de subtítulos `vod-fy-mod.crunchyrollcdn.com` o las pistas `/api/timedtext` de YouTube; sin cookies añadidas en las peticiones de la extensión. Los textos se mantienen en memoria durante la práctica. |
 | Palabra bajo el ratón o pulsada | La palabra inglesa, incluso si existe en el diccionario incluido, para ampliar sentidos | Google Translate; respuesta cacheada en `chrome.storage.local` con clave `w:`. |
 | Frase completa sin traducción oficial | Texto inglés de la frase | Google Translate; respuesta cacheada con clave `t:`. |
 | Reconocimiento de voz | Voz y resultados gestionados por la Web Speech API | Depende del navegador y de su servicio de reconocimiento; puede procesarse remotamente. La extensión no guarda grabaciones. |
@@ -16,7 +16,7 @@ Esta extensión no tiene servidor propio ni añade analítica. Eso **no signific
 
 La solicitud de traducción utiliza un endpoint de Google sin clave de API. **No es una integración contratada ni un servicio con disponibilidad garantizada**; puede cambiar, bloquear solicitudes o devolver errores. Las traducciones automáticas pueden perder contexto.
 
-El reproductor, el navegador y los servicios externos pueden tener sus propias solicitudes y políticas, ajenas a esta extensión. No se pide ni se incluye una contraseña de Crunchyroll en el código o en el repositorio.
+El reproductor, el navegador y los servicios externos pueden tener sus propias solicitudes y políticas, ajenas a esta extensión. No se pide ni se incluye una contraseña de Crunchyroll o YouTube en el código o en el repositorio.
 
 ## Qué no se guarda por este código
 

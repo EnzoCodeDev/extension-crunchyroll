@@ -1,4 +1,5 @@
-/* Opción «Ocultar subtítulos de Crunchyroll»: solo actúa con la clase activa. */
+/* Opción «Ocultar subtítulos»: solo actúa con la clase activa. */
 .cre-hide-subs video::cue { opacity: 0 !important; color: transparent !important; background: transparent !important; }
 .cre-hide-subs .libassjs-canvas-parent,
-.cre-hide-subs canvas.libassjs-canvas { visibility: hidden !important; }
+.cre-hide-subs canvas.libassjs-canvas,
+.cre-hide-subs .ytp-caption-window-container { visibility: hidden !important; }

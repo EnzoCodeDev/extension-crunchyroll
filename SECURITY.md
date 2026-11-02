@@ -2,13 +2,13 @@
 
 ## Alcance
 
-Extensión no oficial de aprendizaje para Crunchyroll. El usuario mantiene su sesión en el sitio. No hay inicio de sesión propio, servidor de aplicación, claves API incrustadas ni automatización de credenciales.
+Extensión no oficial de aprendizaje para Crunchyroll y YouTube. El usuario mantiene su sesión en el sitio. No hay inicio de sesión propio, servidor de aplicación, claves API incrustadas ni automatización de credenciales.
 
 ## Controles implementados
 
 - Permisos declarados en `manifest.json`, limitados a almacenamiento local y los dominios necesarios para el funcionamiento.
 - El worker comprueba el origen HTTPS del frame que envía mensajes, no solo el de su pestaña.
-- Las URLs de subtítulos deben ser HTTPS, estar en Crunchyroll o VRV y no contener credenciales ni puertos alternativos. Las peticiones de subtítulos no siguen redirecciones y omiten cookies.
+- Las URLs de subtítulos deben ser HTTPS, estar en Crunchyroll, VRV o el host exacto `vod-fy-mod.crunchyrollcdn.com` observado en las pistas del reproductor, y no contener credenciales ni puertos alternativos. No se autoriza todo el dominio CDN ni se inyectan scripts en él. YouTube se limita a los hosts exactos `www.youtube.com`, `m.youtube.com` y `youtube.com`, solo en la ruta `/api/timedtext`. Las peticiones de subtítulos no siguen redirecciones y omiten cookies.
 - Las solicitudes de red tienen tiempo máximo de espera.
 - Se limita la longitud de las palabras y frases enviadas al traductor.
 - El texto de subtítulos, reconocimiento y traducciones se escapa antes de insertarlo en el panel.
@@ -19,7 +19,7 @@ Extensión no oficial de aprendizaje para Crunchyroll. El usuario mantiene su se
 
 ## Límites de seguridad
 
-El puente `postMessage` observa datos dentro de la página; **no es una frontera de confianza frente a código que ya corre en esa página**. Se comprueban emisor/origen y los destinos antes de hacer solicitudes, pero no se puede garantizar la integridad de Crunchyroll, del navegador o de otras extensiones.
+El puente `postMessage` observa datos dentro de la página; **no es una frontera de confianza frente a código que ya corre en esa página**. Se comprueban emisor/origen y los destinos antes de hacer solicitudes, pero no se puede garantizar la integridad de Crunchyroll o YouTube, del navegador o de otras extensiones.
 
 El panel usa Shadow DOM abierto para aislar estilos, no para esconder información de la página. No introduzcas datos confidenciales en las respuestas o en subtítulos propios.
 

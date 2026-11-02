@@ -1,27 +1,31 @@
 {
   "manifest_version": 3,
-  "name": "Inglés con Crunchyroll · enzo",
-  "short_name": "Inglés CR",
-  "version": "1.2.0",
+  "name": "Inglés con Crunchyroll y YouTube · enzo",
+  "short_name": "Inglés CR + YT",
+  "version": "1.3.0",
   "description": "Pausa en cada subtítulo: dilo o escríbelo en inglés con al menos 80 % para seguir viendo.",
   "icons": { "16": "icons/icon-16.png", "32": "icons/icon-32.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" },
   "permissions": ["storage"],
   "host_permissions": [
     "https://*.crunchyroll.com/*",
     "https://*.vrv.co/*",
+    "https://vod-fy-mod.crunchyrollcdn.com/*",
+    "https://www.youtube.com/*",
+    "https://m.youtube.com/*",
+    "https://youtube.com/*",
     "https://translate.googleapis.com/*"
   ],
   "background": { "service_worker": "src/background.js" },
   "content_scripts": [
     {
-      "matches": ["https://*.crunchyroll.com/*"],
+      "matches": ["https://*.crunchyroll.com/*", "https://www.youtube.com/*", "https://m.youtube.com/*", "https://youtube.com/*"],
       "js": ["src/page-hook.js"],
       "run_at": "document_start",
       "world": "MAIN",
       "all_frames": true
     },
     {
-      "matches": ["https://*.crunchyroll.com/*"],
+      "matches": ["https://*.crunchyroll.com/*", "https://www.youtube.com/*", "https://m.youtube.com/*", "https://youtube.com/*"],
       "js": ["src/settings.js", "src/network.js", "src/scoring.js", "src/subs.js", "src/content.js"],
       "css": ["src/page.css"],
       "run_at": "document_start",
@@ -29,7 +33,7 @@
     }
   ],
   "web_accessible_resources": [
-    { "resources": ["src/panel.css"], "matches": ["https://*.crunchyroll.com/*"] }
+    { "resources": ["src/panel.css"], "matches": ["https://*.crunchyroll.com/*", "https://www.youtube.com/*", "https://m.youtube.com/*", "https://youtube.com/*"] }
   ],
-  "action": { "default_popup": "popup/popup.html", "default_title": "Inglés con Crunchyroll" }
+  "action": { "default_popup": "popup/popup.html", "default_title": "Inglés con Crunchyroll y YouTube" }
 }

@@ -2,13 +2,14 @@
    1) descarga subtítulos cuando el CDN no deja leerlos desde la página (CORS);
    2) busca palabras: significado y pronunciación para hispanohablantes;
    3) traduce una línea completa cuando el episodio no trae subtítulos en español.
-   Solo atiende a las pestañas de Crunchyroll. */
+   Solo atiende a los frames de Crunchyroll y YouTube. */
 importScripts("pron.js", "network.js");
 
 function fromCrunchyroll(sender) {
   try {
     const url = new URL(sender.url);
-    return !!sender.tab && url.protocol === "https:" && /(^|\.)crunchyroll\.com$/.test(url.hostname);
+    return !!sender.tab && url.protocol === "https:" && !url.username && !url.password && !url.port &&
+      (/(^|\.)crunchyroll\.com$/.test(url.hostname) || ["www.youtube.com", "m.youtube.com", "youtube.com"].includes(url.hostname));
   } catch (_) { return false; }
 }
 
@@ -18,6 +19,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (msg.type === "cre-fetch") job = fetchSubtitle(msg.url);
   else if (msg.type === "cre-word") job = lookupWord(String(msg.word || ""));
   else if (msg.type === "cre-translate") job = translateLine(String(msg.text || ""));
+  else if (msg.type === "cre-pronounce") job = pronounceLine(String(msg.text || ""));
   if (!job) return false;
   job.then(reply, (e) => reply({ ok: false, error: String((e && e.message) || e) }));
   return true; // respuesta asíncrona
@@ -80,6 +82,21 @@ async function meaningOf(word) {
   const out = { main, groups };
   await chrome.storage.local.set({ [key]: out });
   return out;
+}
+
+async function pronounceLine(text) {
+  if (!text.trim() || text.length > 2000) return { ok: false, error: "Texto vacío o demasiado largo" };
+  await loadDicts();
+  // Solo diccionarios locales: no dispara una traducción por cada palabra.
+  const out = text.replace(/[A-Za-z0-9][A-Za-z0-9'’]*(?:-[A-Za-z]+)*/g, (raw) => {
+    const word = CREPron.wordKey(raw);
+    const own = speakDict[word];
+    if (own && own[1]) return own[1];
+    const c = cmuLookup(word);
+    const p = c && CREPron.fromArpabet(c.arpabet, c.key);
+    return p && p.es ? p.es : `[${raw}]`;
+  });
+  return { ok: true, text: out };
 }
 
 async function lookupWord(raw) {

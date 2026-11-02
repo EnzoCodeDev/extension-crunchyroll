@@ -1,5 +1,5 @@
 /* ============================================================
-   Lectura de subtítulos (ASS/SSA, WebVTT y SRT) a una lista de líneas
+   Lectura de subtítulos (ASS/SSA, WebVTT, SRT y YouTube JSON3) a una lista de líneas
    { start, end, text } en segundos, ordenada y lista para practicar.
    ============================================================ */
 (function (root) {
@@ -71,6 +71,65 @@
     return out;
   }
 
+  function parseJson3(text) {
+    let data;
+    try { data = JSON.parse(text); } catch (_) { return []; }
+    if (!Array.isArray(data?.events)) return [];
+    const out = [];
+    const windows = new Map();
+    const events = data.events.filter((event) => event && typeof event.tStartMs === "number")
+      .sort((a, b) => a.tStartMs - b.tStartMs);
+    for (const event of events) {
+      const key = event.wWinId ?? "default";
+      const previous = windows.get(key);
+      const start = event.tStartMs / 1000;
+      if (!Number.isFinite(start) || start < 0) continue;
+      if (!Array.isArray(event.segs)) {
+        // An empty timed window event clears the rolling display.
+        if (previous && !event.wpWinPosId && !event.wsWinStyleId) {
+          previous.end = Math.min(previous.end, start);
+          windows.delete(key);
+        }
+        continue;
+      }
+      const raw = event.segs.map((seg) => typeof seg?.utf8 === "string" ? seg.utf8 : "").join("");
+      let text = tidy(raw);
+      if (!text) continue; // newline-only append events are display control, not dialogue
+      const end = typeof event.dDurationMs === "number" ? start + event.dDurationMs / 1000
+        : event.aAppend && previous ? previous.end : NaN;
+      if (!Number.isFinite(end) || end <= start) continue;
+      const touching = previous && (start < previous.end || event.wWinId != null && start <= previous.end + 0.001);
+      if (touching && event.aAppend) {
+        previous.text = tidy(previous.text + raw);
+        previous.end = Math.max(previous.end, end);
+        continue;
+      }
+      if (touching && !raw.includes("\n") && (text === previous.text || text.startsWith(previous.text + " "))) {
+        previous.text = text;
+        previous.end = Math.max(previous.end, end);
+        continue;
+      }
+      if (touching) {
+        // A rolling snapshot can carry the tail of the previous window plus
+        // a new line. Keep only its new words, not the carried display text.
+        const before = previous.text.split(/\s+/);
+        const after = text.split(/\s+/);
+        for (let n = Math.min(before.length, after.length); n > 0; n--) {
+          if (before.slice(-n).join(" ") === after.slice(0, n).join(" ")) {
+            text = after.slice(n).join(" ");
+            break;
+          }
+        }
+        if (!text) { previous.end = Math.max(previous.end, end); continue; }
+        previous.end = Math.min(previous.end, start);
+      }
+      const cue = { start, end, text };
+      out.push(cue);
+      windows.set(key, cue);
+    }
+    return out;
+  }
+
   function tidy(text) {
     return text.replace(/\s+/g, " ").trim();
   }
@@ -112,7 +171,8 @@
     const src = String(text || "").replace(/^\uFEFF/, "");
     const f = String(format || "").toLowerCase();
     const isAss = f === "ass" || f === "ssa" || /^\s*\[script info\]/i.test(src) || /\n\s*dialogue\s*:/i.test(src);
-    return finalize(isAss ? parseAss(src) : parseVttOrSrt(src));
+    const isJson3 = f === "json3" || /^\s*\{/.test(src);
+    return finalize(isJson3 ? parseJson3(src) : isAss ? parseAss(src) : parseVttOrSrt(src));
   }
 
   /** Momento de pausa de la línea i: su final, o antes si la siguiente empieza

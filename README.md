@@ -1,11 +1,11 @@
-# Inglés con Crunchyroll · enzo
+# Inglés con Crunchyroll y YouTube · enzo
 
 **Practica inglés con las frases del episodio: escucha, comprende, escríbelas o repítelas y sigue cuando superes el ejercicio.**
 
-Extensión Manifest V3 para escritorio, con interfaz en español, proyecto sin compilación y ejercicios integrados sobre el reproductor. Versión **1.2.0**.
+Extensión Manifest V3 para escritorio, con interfaz en español, proyecto sin compilación y ejercicios integrados sobre el reproductor. Versión **1.3.0**.
 
 > [!IMPORTANT]
-> Proyecto independiente y experimental, no afiliado a Crunchyroll. Necesita acceso legítimo al contenido. No descarga episodios, no evita suscripciones y no modifica el DRM. La puntuación compara texto reconocido o escrito: **no es una evaluación fonética profesional**.
+> Proyecto independiente y experimental, no afiliado a Crunchyroll ni a YouTube. Necesita acceso legítimo al contenido. No descarga episodios, no evita suscripciones y no modifica el DRM. La puntuación compara texto reconocido o escrito: **no es una evaluación fonética profesional**.
 
 ## Contenido
 
@@ -29,6 +29,7 @@ Extensión Manifest V3 para escritorio, con interfaz en español, proyecto sin c
 | ⌨️ Escribir | Deja visible la frase para copiarla y comprueba tu respuesta con Enter. |
 | 🔀 Mixto | Alterna ejercicios de voz y escritura. |
 | Traducción completa | El significado de **toda la frase** aparece debajo del inglés, sin tener que pulsar un botón. |
+| Cómo se dice | Entre el inglés y la traducción aparece una guía aproximada para hispanohablantes, en azul, generada con diccionarios locales. Las palabras sin datos quedan entre corchetes. En dictado se oculta hasta revelar la respuesta. |
 | Diccionario por palabra | Al pasar el ratón o hacer clic: significado en español, guía de pronunciación para hispanohablantes, AFI cuando está disponible y audio. |
 | Cambio inmediato | Cambiar el modo arriba o en el popup actualiza la frase abierta sin pasar a otra. |
 | Práctica obligatoria | No existe botón ni atajo «Saltar». Play, clic fuera o mover la barra no liberan un ejercicio pendiente. |
@@ -66,7 +67,7 @@ No hace falta Node.js, Python ni un servidor para **usar** la extensión: los di
 2. Abre `edge://extensions` en Microsoft Edge o `chrome://extensions` en Google Chrome.
 3. Activa **Modo para desarrolladores**.
 4. Pulsa **Carga desempaquetada / Cargar descomprimida** y selecciona la carpeta que contiene `manifest.json`.
-5. Abre o recarga un episodio de Crunchyroll en el navegador.
+5. Abre o recarga un episodio de Crunchyroll o un video de YouTube con subtítulos en inglés en el navegador.
 6. Aparecerá una píldora de estado sobre el video con el modo y el progreso.
 7. Para hablar, permite el micrófono cuando lo solicite el navegador. Espera a ver **«Escuchando…»** antes de decir la frase.
 
@@ -112,7 +113,7 @@ Repetir y Lento vuelven al fragmento y después regresan al mismo ejercicio. Si 
 
 ### 5. Supera el mínimo para continuar
 
-Con la configuración inicial necesitas **80 %**. Si no llegas, el video sigue pausado y puedes reintentarlo. Cuando apruebas, continúa automáticamente tras una breve espera o mediante **Continuar**, según el ajuste.
+Con la configuración inicial necesitas **80 %**. Si no llegas, el video sigue pausado y puedes reintentarlo. Cuando apruebas, continúa automáticamente tras **0,5 segundos** o mediante **Continuar**, según el ajuste.
 
 Play del reproductor, un clic en el video o un intento de adelantar no descartan una frase abierta. La tecla S ya no sirve para saltar.
 
@@ -133,7 +134,7 @@ El popup se abre desde el menú de extensiones del navegador.
 | Pista española | Español de Latinoamérica | Alternativa: español de España; sin pista oficial se intenta traducción automática. |
 | Dictado | No | Oculta el texto inglés al escribir. |
 | Abrir micrófono | Sí | Intenta iniciar la escucha al pausar en modo voz; depende del permiso del navegador. |
-| Continuar automáticamente | Sí | Reanuda después de aprobar. |
+| Continuar automáticamente | Sí | Muestra el resultado correcto durante 0,5 segundos y reanuda sin hacer clic. |
 | No repetir aprobadas | Sí | Omite ejercicios ya superados al regresar a esa parte del episodio. |
 | Ocultar subtítulos nativos | No | Intenta ocultar la capa de subtítulos del sitio; su compatibilidad depende del reproductor. |
 
@@ -167,15 +168,16 @@ Consulta [PRIVACY.md](PRIVACY.md) para ver qué datos salen del navegador y cóm
 | Permiso o destino | Motivo |
 | --- | --- |
 | `storage` | Ajustes, estadísticas, progreso y caché local de traducciones. |
-| Páginas de Crunchyroll | Detectar subtítulos y video, añadir el panel y pausar/reproducir. Se inyecta en frames coincidentes. |
-| Dominios de Crunchyroll y VRV | Leer archivos de subtítulos de esos dominios. Las peticiones de la extensión omiten cookies y rechazan redirecciones. |
+| Páginas de Crunchyroll y YouTube | Detectar subtítulos y video, añadir el panel y pausar/reproducir. Se inyecta en frames coincidentes. |
+| Dominios de Crunchyroll y VRV, y `vod-fy-mod.crunchyrollcdn.com` | Leer archivos de subtítulos entregados por el reproductor. El permiso del CDN se limita a ese host, sin inyectar scripts allí. Las peticiones omiten cookies y rechazan redirecciones. |
+| YouTube (`www.youtube.com`, `m.youtube.com`, `youtube.com`) | Leer únicamente `/api/timedtext` de las pistas ya proporcionadas por el reproductor. No genera tokens ni evita restricciones. |
 | `translate.googleapis.com` | Consultar significado de palabras y traducir frases cuando hace falta. |
 | Micrófono del sitio | Lo pide el navegador cuando se usa reconocimiento de voz; no se capturan archivos de audio propios. |
 
 > [!WARNING]
 > **No todo es offline.** Incluso las palabras presentes en el diccionario local pueden enviarse a Google para ampliar sus sentidos. Las frases sin traducción oficial también se envían allí. El reconocimiento y la síntesis de voz dependen de los servicios y voces del navegador. No uses material confidencial como texto de práctica.
 
-No hay servidor propio del proyecto, inicio de sesión propio, analítica añadida ni claves de API incluidas. Los datos de cuenta de Crunchyroll se gestionan en su sitio, no en este repositorio.
+No hay servidor propio del proyecto, inicio de sesión propio, analítica añadida ni claves de API incluidas. Los datos de cuenta de Crunchyroll y YouTube se gestionan en sus sitios, no en este repositorio.
 
 ## Desarrollo y pruebas
 
@@ -202,11 +204,13 @@ npm run test:e2e
 | `python tools/build_dict.py` | Regenera CMU desde una revisión fija; conserva el vocabulario incluido sin leer otros proyectos. |
 | `python tools/make_icons.py` | Regenera los iconos originales con Pillow. Revisar sus hashes después. |
 
-La prueba E2E **no usa una cuenta real, cookies del usuario ni un episodio de anime**. Genera un patrón de video, un certificado local y subtítulos inventados. Redirige el dominio de prueba al loopback únicamente dentro del Chrome temporal. Las excepciones TLS solo se usan en ese proceso de prueba, no en el navegador personal ni en la extensión.
+La prueba E2E **no usa una cuenta real, cookies del usuario ni un episodio de anime**. Incluye subtítulos sintéticos servidos desde el host CDN permitido, redirigido al servidor local, y verifica la descarga desde el worker con los permisos reales de Chrome. Genera un patrón de video, un certificado local y subtítulos inventados. Redirige el dominio de prueba al loopback únicamente dentro del Chrome temporal. Las excepciones TLS solo se usan en ese proceso de prueba, no en el navegador personal ni en la extensión.
 
 La prueba de palabras consulta el servicio externo real de traducción, por lo que necesita internet y puede fallar si ese servicio cambia o está caído. `E2E_OUT` permite elegir una carpeta de resultados **fuera del repositorio**; ahí quedan videos, certificados y capturas. No se deben publicar esos archivos en bloque. Las imágenes de esta documentación se han seleccionado e inspeccionado aparte.
 
 Verificado para esta versión: pruebas unitarias, regresiones de frase completa/modo inmediato/bloqueo, carga de la extensión en Chrome y flujo de escritura/repetición/progreso. **No se ha automatizado una evaluación de pronunciación con un micrófono real ni se garantiza el catálogo completo de Crunchyroll.**
+
+Para ejecutar el mismo flujo E2E con el reproductor simulado de YouTube: `E2E_PLATFORM=youtube npm run test:e2e` (variable de entorno del shell). Las pruebas incluyen la regresión `But, that's...` frente a `but that's`: 100 %, sin penalizar comas, puntos suspensivos ni apóstrofos tipográficos. La verificación simulada no demuestra compatibilidad con todos los videos del sitio real.
 
 ### Estructura
 
@@ -216,7 +220,7 @@ src/page-hook.js          Observación pasiva de respuestas de reproducción
 src/content.js            Panel, ejercicios y control del video
 src/background.js         Diccionario, traducción y descarga de subtítulos
 src/network.js            Política de destinos de subtítulos
-src/subs.js               Lectura y limpieza ASS/SSA, VTT y SRT
+src/subs.js               Lectura y limpieza ASS/SSA, VTT, SRT y JSON3 (YouTube)
 src/scoring.js            Puntuación de texto reconocido o escrito
 src/pron.js               Conversión de ARPAbet a guía de pronunciación y AFI
 src/settings.js           Valores iniciales y almacenamiento
@@ -246,6 +250,12 @@ No añadas cookies, contraseñas, perfiles de navegador, capturas de cuentas rea
 El filtro **no prueba ausencia absoluta de secretos**. Una imagen puede contener datos que no detecta un patrón textual, y una modificación de la lista o de los hashes exige revisión humana.
 
 ## Límites y solución de problemas
+
+<details>
+<summary>«No se pudieron cargar los subtítulos» en la versión 1.2.0</summary>
+
+Esa versión rechazaba el CDN `vod-fy-mod.crunchyrollcdn.com` utilizado por el reproductor. La 1.2.1 permite únicamente ese host adicional y mantiene HTTPS, ausencia de credenciales, rechazo de puertos alternativos y redirecciones, y peticiones sin cookies. Tras actualizar los archivos, recarga la extensión desde la página de extensiones del navegador y después el episodio.
+</details>
 
 <details>
 <summary>No aparece la píldora o se queda esperando subtítulos</summary>
@@ -280,7 +290,7 @@ Es intencional: la frase actual requiere aprobar. Repite el fragmento o cambia d
 <details>
 <summary>¿Funciona en pantalla completa y con otros servicios?</summary>
 
-El panel sigue el contenedor de pantalla completa cuando es accesible. El modo de pantalla completa nativa exclusivo del elemento video y reproductores en otros orígenes pueden limitar las capas HTML. Solo se incluyen scripts para Crunchyroll; no es una extensión universal para otras plataformas.
+El panel sigue el contenedor de pantalla completa cuando es accesible. El modo de pantalla completa nativa exclusivo del elemento video y reproductores en otros orígenes pueden limitar las capas HTML. Se incluyen scripts para Crunchyroll y YouTube; no es una extensión universal para otras plataformas. En YouTube lee las pistas publicadas por el reproductor (manuales o automáticas) y requiere subtítulos en inglés accesibles. Si YouTube devuelve una pista vacía o restringida, muestra un error y permite cargar subtítulos propios; no evita restricciones. No se practican los anuncios.
 </details>
 
 ## Procedencia y licencias

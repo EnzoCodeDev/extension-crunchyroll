@@ -14,6 +14,34 @@ test("normaliza contracciones, números y puntuación", () => {
   assert.deepEqual(normalize("I have 2 cats"), ["i", "have", "two", "cats"]);
 });
 
+test("contracción seguida de puntuación no penaliza una respuesta correcta (regresión But, that's...)", () => {
+  for (const [target, answer] of [
+    ["But, that's...", "but that's"],
+    ["But, that’s…", "but that's"],
+    ["That's!", "that is"],
+    ["I'm, I'm...", "i am i am"],
+    ["Don't!", "do not"],
+    ["Let's-go!", "let us go"],
+  ]) {
+    assert.deepEqual(normalize(target), normalize(answer), target);
+    const result = evaluate(target, answer);
+    assert.equal(result.score, 100, target);
+    assert.ok(result.words.every(w => w.sim === 1), target);
+    assert.equal(evaluate(answer, target).score, 100, target);
+  }
+});
+
+test("posesivos conservan una palabra y una inversión leve no penaliza también el apóstrofo", () => {
+  const target = "possessing a Magic Knight's body.";
+  assert.deepEqual(normalize(target), ["possessing", "a", "magic", "knights", "body"]);
+  assert.equal(evaluate(target, "possessing a magic knights body").score, 100);
+  const transposed = evaluate(target, "possessing a magic knigths body");
+  assert.ok(transposed.score >= 80 && transposed.score < 100, `nota ${transposed.score}`);
+  assert.equal(transposed.words.length, 5);
+  assert.ok(evaluate(target, "possessing a magic king body").score < 80);
+  assert.ok(evaluate(target, "possessing a magic body").score < 80);
+});
+
 test("línea idéntica = 100 y supera el 80", () => {
   assert.equal(evaluate("I won't let you down!", "I will not let you down").score, 100);
 });
