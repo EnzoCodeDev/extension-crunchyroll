@@ -1,4 +1,5 @@
-// Pruebas de lógica pura: node --test tests/
+// Pruebas de lógica y lifecycle: npm test
+const vm = require("node:vm");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { evaluate, evaluateBest, normalize } = require("../src/scoring.js");
@@ -7,6 +8,217 @@ const { streak, today } = require("../src/settings.js");
 const { fromArpabet, wordKey } = require("../src/pron.js");
 const fs = require("node:fs");
 const path = require("node:path");
+
+// Ejecuta las funciones reales del motor con medios controlados: ningún reloj
+// decide si un seek es propio, y las promesas se resuelven explícitamente.
+function mediaEngine() {
+  const source = fs.readFileSync(path.join(__dirname, "../src/content.js"), "utf8");
+  const elements = new Map();
+  const element = (sel) => {
+    if (!elements.has(sel)) elements.set(sel, { hidden: false, value: "", focus() {} });
+    return elements.get(sel);
+  };
+  const context = vm.createContext({
+    clearTimeout, setTimeout, Math, Promise,
+    document: { documentElement: { classList: { toggle() {} } } },
+    window: {}, $: element, hidePop() {}, renderExercise() {}, renderPill() {},
+    stopMic() {}, focusInput() {}, setStatus(text) { context.status = text; },
+    video: null, ownSeek: null, playAttempt: null, phase: "watch", ex: null,
+    savedRate: 1, preciseTimer: 0, continueTimer: 0, pendingCues: null,
+    cues: [{ start: 1, end: 3, text: "Hello there", practice: "Hello there" }],
+    targets: [0], idx: 0, stopAt() { return 3; },
+    settings: { mode: "write", dictation: false }, exerciseCount: 0, playback: null,
+    translationFor() { return "Hola"; }, pronounceCurrent() {},
+  });
+  const resyncStart = source.indexOf("  function resync() {");
+  const resyncEnd = source.indexOf("  function isPassed", resyncStart);
+  const start = source.indexOf("  function attachVideo(v) {");
+  const end = source.indexOf("  function tts()", start);
+  const applyStart = source.indexOf("  function applySettings(prev) {");
+  const applyEnd = source.indexOf("  store.onChange", applyStart);
+  vm.runInContext(source.slice(resyncStart, resyncEnd) + source.slice(start, end) + source.slice(applyStart, applyEnd), context);
+  const run = (code) => vm.runInContext(code, context);
+  function media(time = 3) {
+    const listeners = new Map();
+    return {
+      currentTime: time, playbackRate: 1, paused: true, seeking: false,
+      addEventListener(name, fn) { listeners.set(name, fn); },
+      removeEventListener(name) { listeners.delete(name); },
+      emit(name) { listeners.get(name)?.({ currentTarget: this }); },
+      pause() { this.paused = true; },
+      play() { this.paused = false; this.emit("play"); return Promise.resolve(); },
+    };
+  }
+  context.first = media();
+  run("attachVideo(first); idx = 0; startExercise(cues[0]);");
+  return { context, run, media };
+}
+
+function replacementRegression() {
+  const { context: c, run, media } = mediaEngine();
+  run("replay(true)");
+  c.next = media(0);
+  run("attachVideo(next)");
+  assert.equal(c.first.playbackRate, 1);
+  assert.equal(c.ex, null);
+  assert.equal(c.phase, "watch");
+  c.next.emit("play");
+  c.next.emit("seeked");
+  assert.equal(c.next.currentTime, 0);
+  assert.equal(c.ownSeek, null);
+}
+
+
+test("reemplazar el video descarta el ejercicio y nunca busca el ancla anterior", replacementRegression);
+
+test("seek de usuario no consume como propio un replay todavía pendiente", () => {
+  const { context: c, run } = mediaEngine();
+  run("replay(false)");
+  c.first.currentTime = 10;
+  c.first.emit("seeked");
+  assert.equal(c.first.currentTime, 3);
+  assert.equal(c.first.paused, true);
+  assert.equal(c.phase, "exercise");
+  // Otro salto antes del seeked correctivo tampoco obtiene una excepción.
+  c.first.currentTime = 9;
+  c.first.emit("seeked");
+  assert.equal(c.first.currentTime, 3);
+  c.first.emit("seeked");
+  assert.equal(c.ownSeek, null);
+});
+
+test("replay rechazado restaura velocidad, habilita respuesta y permite reintentar", async () => {
+  const { context: c, run } = mediaEngine();
+  c.first.playbackRate = 1.25;
+  c.first.play = () => Promise.reject(new Error("blocked"));
+  await run("replay(true)");
+  assert.equal(c.phase, "exercise");
+  assert.equal(c.first.playbackRate, 1.25);
+  assert.equal(c.first.paused, true);
+  assert.equal(c.ownSeek, null);
+  assert.match(c.status, /No se pudo.*Repetir/i);
+  assert.ok(c.ex);
+  c.first.play = () => Promise.resolve();
+  await run("replay(false)");
+  assert.equal(c.phase, "replay");
+});
+
+test("continuar rechazado conserva aprobado e índice y permite reintentar sin duplicar avance", async () => {
+  const { context: c, run } = mediaEngine();
+  const original = c.ex;
+  c.ex.passed = true;
+  c.first.play = () => Promise.reject(new Error("blocked"));
+  await run("continueVideo()");
+  assert.equal(c.ex, original);
+  assert.equal(c.phase, "exercise");
+  assert.equal(c.idx, 0);
+  assert.equal(c.first.paused, true);
+  assert.match(c.status, /No se pudo.*Continuar/i);
+  c.first.play = () => Promise.resolve();
+  await run("continueVideo()");
+  assert.equal(c.ex, null);
+  assert.equal(c.idx, 1);
+  assert.equal(c.phase, "watch");
+});
+
+test("un seek que cancela continuar no permite que una promesa tardía cierre el ejercicio", async () => {
+  const { context: c, run } = mediaEngine();
+  c.ex.passed = true;
+  let finish;
+  c.first.play = () => new Promise(resolve => { finish = resolve; });
+  const pending = run("continueVideo()");
+  c.first.currentTime = 10;
+  c.first.emit("seeked");
+  assert.equal(c.first.currentTime, 3);
+  finish();
+  await pending;
+  assert.ok(c.ex);
+  assert.equal(c.phase, "exercise");
+  assert.equal(c.idx, 0);
+});
+
+test("cambiar de modo invalida el replay pendiente y su rechazo tardío", async () => {
+  const { context: c, run } = mediaEngine();
+  let reject;
+  c.first.play = () => new Promise((_, fail) => { reject = fail; });
+  const pending = run("replay(true)");
+  run('settings.mode = "speak"; applySettings({mode:"write",dictation:false})');
+  const status = c.status;
+  reject(new Error("late"));
+  await pending;
+  assert.equal(c.status, status);
+  assert.equal(c.playAttempt, null);
+  assert.equal(c.ownSeek, null);
+  assert.equal(c.phase, "exercise");
+  assert.equal(c.first.playbackRate, 1);
+});
+
+test("seek propio solo se acepta para su video y destino y se limpia al cerrar", () => {
+  const { context: c, run, media } = mediaEngine();
+  run("replay(false)");
+  c.first.emit("seeked");
+  assert.equal(c.phase, "replay");
+  assert.equal(c.ownSeek, null);
+  run("replay(false); closeExercise(); startExercise(cues[0]);");
+  assert.equal(c.ownSeek, null);
+  c.first.currentTime = 10;
+  c.first.emit("seeked");
+  assert.equal(c.first.currentTime, c.ex.anchor);
+  c.ownSeek = { video: media(), target: 10 };
+  c.first.currentTime = 10;
+  c.first.emit("seeked");
+  assert.equal(c.first.currentTime, c.ex.anchor);
+});
+
+test("reemplazo y replay más reciente ignoran rechazos antiguos", async () => {
+  const { context: c, run, media } = mediaEngine();
+  let reject;
+  c.first.play = () => new Promise((_, fail) => { reject = fail; });
+  const pending = run("replay(true)");
+  c.first.play = () => Promise.resolve();
+  await run("replay(false)");
+  reject(new Error("late"));
+  await pending;
+  assert.equal(c.phase, "replay");
+  assert.equal(c.status, "Repitiendo…");
+  c.first.play = () => new Promise((_, fail) => { reject = fail; });
+  const oldVideo = run("replay(true)");
+  c.next = media(0);
+  run("attachVideo(next)");
+  reject(new Error("replaced"));
+  await oldVideo;
+  assert.equal(c.phase, "watch");
+  assert.equal(c.next.currentTime, 0);
+  assert.equal(c.next.playbackRate, 1);
+});
+
+test("continuar pendiente no avanza dos veces y un cierre invalida su resolución", async () => {
+  const { context: c, run } = mediaEngine();
+  let finish, calls = 0;
+  c.ex.passed = true;
+  c.first.play = () => { calls++; return new Promise(resolve => { finish = resolve; }); };
+  const pending = run("continueVideo()");
+  await run("continueVideo()");
+  assert.equal(calls, 1);
+  run("closeExercise()");
+  finish();
+  await pending;
+  assert.equal(c.idx, 0);
+  assert.equal(c.phase, "watch");
+});
+
+test("errores síncronos de play también dejan replay y continuar recuperables", async () => {
+  const { context: c, run } = mediaEngine();
+  c.first.play = () => { throw new Error("blocked"); };
+  await run("replay(false)");
+  assert.equal(c.phase, "exercise");
+  assert.match(c.status, /No se pudo repetir/);
+  c.ex.passed = true;
+  await run("continueVideo()");
+  assert.equal(c.phase, "exercise");
+  assert.equal(c.idx, 0);
+  assert.match(c.status, /No se pudo continuar/);
+});
 
 test("normaliza contracciones, números y puntuación", () => {
   assert.deepEqual(normalize("I'm gonna win, OK?"), ["i", "am", "going", "to", "win", "okay"]);

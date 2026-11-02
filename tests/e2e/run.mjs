@@ -376,6 +376,68 @@ try {
   await page.screenshot({path:path.join(OUT,"7-possessive-fixed.png")});
   await waitFor(x=>x.phase === "watch" && !x.paused,900,"avance tras posesivo");
   check("Tras aprobar el posesivo, avanza solo a los 0,5 s",true);
+
+  // Fallos de play() inyectados solo en el mundo aislado de ESTA extensión
+  // dentro del navegador temporal. No se cambia el navegador del usuario.
+  await worker.evaluate(async () => {
+    const { settings } = await chrome.storage.local.get("settings");
+    await chrome.storage.local.set({settings: {...settings, autoContinue:false}});
+  });
+  if (!YOUTUBE) playback.captions["en-US"].url = `${SUBTITLE_ORIGIN}/subs/en.vtt`;
+  const cdp = await page.createCDPSession();
+  const contexts = [];
+  cdp.on("Runtime.executionContextCreated", ({context}) => contexts.push(context));
+  await cdp.send("Runtime.enable");
+  await page.goto(YOUTUBE ? `${ORIGIN}/watch?v=LIFECYCLE12` : `${ORIGIN}/watch/LIFECYCLE12/prueba`, {waitUntil:"load"});
+  await waitFor(x => x.load === "ready", 8000, "pista lifecycle");
+  const isolated = contexts.findLast(c => c.origin === `chrome-extension://${extId}` || c.name === `chrome-extension://${extId}`);
+  if (!isolated) throw new Error("No se encuentra el mundo aislado de la extensión para inyectar el fallo");
+  const inject = async (expression) => {
+    const result = await cdp.send("Runtime.evaluate", {expression, contextId:isolated.id});
+    if (result.exceptionDetails) throw new Error("Falló la inyección de prueba en el mundo aislado");
+  };
+  await page.evaluate(() => document.getElementById("v").play());
+  await waitFor(x => x.phase === "exercise", 6000, "ejercicio lifecycle");
+  await inject('document.getElementById("v").play = () => Promise.reject(new DOMException("Fallo sintético", "NotAllowedError"))');
+  await shadowClick('[data-act="slow"]');
+  await page.waitForFunction(() => document.getElementById("cre-host").shadowRoot.querySelector(".status").textContent.includes("No se pudo repetir"));
+  s = await waitFor(x => x.phase === "exercise" && x.paused, 2000, "replay fallido recuperable");
+  check("Replay rechazado muestra aviso, restaura velocidad y habilita respuesta", s.idx === "0" && await page.evaluate(() => {
+    const root = document.getElementById("cre-host").shadowRoot;
+    return document.getElementById("v").playbackRate === 1 && !root.querySelector('[data-act="primary"]').disabled;
+  }));
+  await page.screenshot({path:path.join(OUT,"8-replay-rejected.png")});
+  await inject('delete document.getElementById("v").play');
+  await shadowClick('[data-act="replay"]');
+  await waitFor(x => x.phase === "replay" && !x.paused, 3000, "reintentar replay");
+  await waitFor(x => x.phase === "exercise" && x.paused, 6000, "replay recuperado");
+  check("Se puede repetir después del rechazo", true);
+  await inject('document.getElementById("v").play = () => Promise.reject(new DOMException("Fallo sintético", "NotAllowedError"))');
+  await typeAnswer("Hello there how are you");
+  await waitFor(x => x.passed === "true", 2000, "aprobado antes de continuar");
+  await shadowClick('[data-act="primary"]');
+  await page.waitForFunction(() => document.getElementById("cre-host").shadowRoot.querySelector(".status").textContent.includes("No se pudo continuar"));
+  s = await waitFor(x => x.phase === "exercise" && x.paused, 2000, "continuar fallido recuperable");
+  check("Continuar rechazado conserva aprobado, índice y botón de reintento", s.idx === "0" && s.passed === "true" && await page.evaluate(() => !document.getElementById("cre-host").shadowRoot.querySelector('[data-act="primary"]').disabled));
+  await page.screenshot({path:path.join(OUT,"9-continue-rejected.png")});
+  await inject('delete document.getElementById("v").play');
+  await shadowClick('[data-act="primary"]');
+  await waitFor(x => x.phase === "watch" && !x.paused && x.idx === "1", 2000, "continuar recuperado");
+  check("Reintentar Continuar reanuda y avanza una sola vez", true);
+  await waitFor(x => x.phase === "exercise", 6000, "ejercicio anterior a reemplazo");
+  await page.evaluate(() => {
+    const old = document.getElementById("v");
+    const next = old.cloneNode(true);
+    old.replaceWith(next);
+    window.__oldVideo = old;
+  });
+  s = await waitFor(x => x.phase === "watch" && x.t < 0.1, 2000, "video reemplazado sin ancla antigua");
+  check("Reemplazar video cierra la tarjeta anterior sin buscar su ancla", s.paused && await page.evaluate(() => document.getElementById("cre-host").shadowRoot.querySelector(".panel").hidden));
+  await page.evaluate(() => window.__oldVideo.dispatchEvent(new Event("seeked")));
+  s = await state();
+  check("Eventos tardíos del video anterior no mueven el nuevo", s.t < 0.1 && s.phase === "watch");
+  await cdp.detach();
+  check("Lifecycle no genera errores de la extensión", !errors.some(e => /cre|content\.js|scoring|subs\.js/i.test(e)));
 } catch (e) {
   check("Ejecución completa", false, e.message); console.log("ERRORES", globalThis.__errs);
 } finally {

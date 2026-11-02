@@ -35,13 +35,14 @@
   let progress = { passed: {} };
   let video = null;
   let idx = 0; // posición dentro de targets
-  let phase = "watch"; // watch | exercise | replay
+  let phase = "watch"; // watch | exercise | replay | resume
   let ex = null; // ejercicio en curso
   let exerciseCount = 0;
   let replayEnd = 0;
   let preciseTimer = 0; // disparo exacto en los últimos milisegundos de la línea
   let savedRate = 1;
-  let ownSeek = false; // búsqueda propia (repetir): no cuenta como acción del usuario
+  let ownSeek = null; // { video, target }: solo reconoce el destino solicitado
+  let playAttempt = null; // identidad de la operación, no una ventana temporal
   let rec = null;
   let continueTimer = 0;
 
@@ -247,7 +248,7 @@
     else if (speak) primary.textContent = ex.listening ? "⏹ Parar" : "🎤 Hablar";
     else primary.textContent = "Comprobar ↵";
     primary.classList.toggle("rec", !!ex.listening);
-    primary.disabled = phase === "replay";
+    primary.disabled = phase === "replay" || phase === "resume";
   }
 
   /* ---------------- carga de subtítulos ---------------- */
@@ -458,6 +459,9 @@
   }
 
   function attachVideo(v) {
+    // Restaurar y cerrar contra el elemento anterior, nunca contra el nuevo.
+    closeExercise();
+    clearTimeout(preciseTimer); preciseTimer = 0;
     if (video) {
       video.removeEventListener("seeked", onSeeked);
       video.removeEventListener("play", onPlay);
@@ -469,16 +473,21 @@
     resync();
   }
 
-  function onSeeked() {
+  function onSeeked(event) {
+    if (event.currentTarget !== video) return;
     clearTimeout(preciseTimer); preciseTimer = 0;
-    if (ownSeek) { ownSeek = false; return; }
+    const expected = ownSeek;
+    ownSeek = null;
+    if (expected && expected.video === video && !video.seeking &&
+        Math.abs(video.currentTime - expected.target) <= 0.04) return;
     if (ex) {
+      playAttempt = null;
       stopMic(true);
       video.pause();
       if (phase === "replay") video.playbackRate = savedRate;
       phase = "exercise";
       if (Math.abs(video.currentTime - ex.anchor) > 0.04) {
-        ownSeek = true;
+        ownSeek = { video, target: ex.anchor };
         video.currentTime = ex.anchor;
       }
       renderExercise();
@@ -529,6 +538,8 @@
   }
 
   function closeExercise() {
+    playAttempt = null;
+    ownSeek = null;
     clearTimeout(continueTimer);
     stopMic(true);
     window.speechSynthesis && window.speechSynthesis.cancel();
@@ -543,31 +554,61 @@
     return false;
   }
 
-  function continueVideo() {
-    if (!ex || !ex.passed) return;
+  async function continueVideo() {
+    if (!ex || !ex.passed || !video || phase === "resume") return;
+    clearTimeout(continueTimer);
+    ownSeek = null;
+    const attempt = playAttempt = { video, exercise: ex };
     const completed = ex.cue;
+    phase = "resume"; // conservar la frase hasta que play() confirme la reanudación
+    renderExercise();
+    try {
+      await attempt.video.play();
+    } catch (_) {
+      if (playAttempt !== attempt || video !== attempt.video || ex !== attempt.exercise) return;
+      playAttempt = null;
+      video.pause();
+      phase = "exercise";
+      setStatus("No se pudo continuar el video. Pulsa Continuar para reintentarlo.", "bad");
+      renderExercise();
+      return;
+    }
+    if (playAttempt !== attempt || video !== attempt.video || ex !== attempt.exercise) return;
     if (closeExercise()) {
       const completedIndex = targets.findIndex((i) => cues[i].start === completed.start && cues[i].end === completed.end && cues[i].text === completed.text);
       if (completedIndex >= 0) idx = completedIndex + 1;
       else resync();
     } else idx++;
-    video.play().catch(() => {});
     renderPill();
   }
 
-  function replay(slow) {
+  async function replay(slow) {
     if (!ex || !video) return;
     stopMic(true);
     clearTimeout(continueTimer);
     if (phase !== "replay") savedRate = video.playbackRate || 1;
     phase = "replay";
     replayEnd = stopAt(idx);
-    ownSeek = true;
-    video.currentTime = Math.max(0, ex.cue.start - 0.15);
+    const target = Math.max(0, ex.cue.start - 0.15);
+    ownSeek = { video, target };
+    video.currentTime = target;
     video.playbackRate = slow ? 0.7 : savedRate;
-    video.play().catch(() => {});
+    const attempt = playAttempt = { video, exercise: ex };
     setStatus(slow ? "Repitiendo más lento…" : "Repitiendo…");
     renderExercise();
+    try {
+      await attempt.video.play();
+      if (playAttempt === attempt) playAttempt = null;
+    } catch (_) {
+      if (playAttempt !== attempt || video !== attempt.video || ex !== attempt.exercise) return;
+      playAttempt = null;
+      ownSeek = null;
+      video.pause();
+      video.playbackRate = savedRate;
+      phase = "exercise";
+      setStatus("No se pudo repetir el video. Pulsa Repetir para reintentarlo o responde la frase.", "bad");
+      renderExercise();
+    }
   }
 
   function tts() {
@@ -860,7 +901,7 @@
 
   /* ---------------- acciones ---------------- */
   function primary() {
-    if (!ex || phase === "replay") return;
+    if (!ex || phase === "replay" || phase === "resume") return;
     if (ex.passed) return continueVideo();
     if (ex.mode === "speak") return ex.listening ? stopMic(false) : startMic();
     return checkWritten();
@@ -959,6 +1000,8 @@
     document.documentElement.classList.toggle("cre-hide-subs", !!settings.hideNativeSubs);
     if (cues.length && !ex) { computeTargets(); resync(); }
     if (ex && prev && (prev.mode !== settings.mode || prev.dictation !== settings.dictation)) {
+      playAttempt = null;
+      ownSeek = null;
       stopMic(true);
       if (phase === "replay") video.playbackRate = savedRate;
       video.pause();

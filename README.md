@@ -109,7 +109,7 @@ Un clic fija el recuadro. Hacer clic fuera lo cierra, **sin saltar el ejercicio*
 - **Escribir:** copia la frase visible y pulsa Enter. En **Dictado** se oculta el texto; puedes repetir el audio, pedir las primeras letras y después ver la respuesta.
 - **Mixto:** alterna el tipo de ejercicio. Si necesitas otro modo, cámbialo arriba: se actualiza la frase actual, no se pasa a otra.
 
-Repetir y Lento vuelven al fragmento y después regresan al mismo ejercicio. Si el audio no está en inglés y activas Dictado, el texto se muestra inicialmente y desaparece al teclear: pasa a ser un ejercicio de memoria.
+Repetir y Lento vuelven al fragmento y después regresan al mismo ejercicio. Si el navegador rechaza la reproducción, el panel muestra un aviso y permite reintentar; al fallar Continuar se conserva la frase aprobada hasta poder reanudar. Si el sitio reemplaza el elemento de video, se cierra el ejercicio del elemento anterior y se recalcula la posición, sin buscar su ancla en el video nuevo. Si el audio no está en inglés y activas Dictado, el texto se muestra inicialmente y desaparece al teclear: pasa a ser un ejercicio de memoria.
 
 ### 5. Supera el mínimo para continuar
 
@@ -197,7 +197,7 @@ npm run test:e2e
 
 | Comando | Alcance |
 | --- | --- |
-| `npm test` | Lógica de puntuación, subtítulos, pronunciación y restricciones de red. |
+| `npm test` | Lógica de puntuación, subtítulos, pronunciación, lifecycle/replay y restricciones de red. |
 | `npm run test:e2e` | Chrome nuevo con perfil temporal y extensión cargada sobre un servidor simulado local. |
 | `python -m unittest discover -s tests -p "test_*.py" -v` | Reglas del control de publicación. |
 | `python tools/check_publication.py` | Índice Git, historial y objetos completos antes de publicar. Requiere archivos preparados en el índice. |
@@ -208,7 +208,7 @@ La prueba E2E **no usa una cuenta real, cookies del usuario ni un episodio de an
 
 La prueba de palabras consulta el servicio externo real de traducción, por lo que necesita internet y puede fallar si ese servicio cambia o está caído. `E2E_OUT` permite elegir una carpeta de resultados **fuera del repositorio**; ahí quedan videos, certificados y capturas. No se deben publicar esos archivos en bloque. Las imágenes de esta documentación se han seleccionado e inspeccionado aparte.
 
-Verificado para esta versión: pruebas unitarias, regresiones de frase completa/modo inmediato/bloqueo, carga de la extensión en Chrome y flujo de escritura/repetición/progreso. **No se ha automatizado una evaluación de pronunciación con un micrófono real ni se garantiza el catálogo completo de Crunchyroll.**
+Verificado para esta versión: pruebas unitarias, regresiones de frase completa/modo inmediato/bloqueo, carga de la extensión en Chrome y flujo de escritura/repetición/progreso. Los E2E de ambas plataformas también inyectan rechazos sintéticos de `play()` en el mundo aislado de la extensión para comprobar avisos y reintentos, y reemplazan el elemento de video para verificar que no hereda el ancla anterior. **No se ha automatizado una evaluación de pronunciación con un micrófono real ni se garantiza el catálogo completo de Crunchyroll.**
 
 Para ejecutar el mismo flujo E2E con el reproductor simulado de YouTube: `E2E_PLATFORM=youtube npm run test:e2e` (variable de entorno del shell). Las pruebas incluyen la regresión `But, that's...` frente a `but that's`: 100 %, sin penalizar comas, puntos suspensivos ni apóstrofos tipográficos. La verificación simulada no demuestra compatibilidad con todos los videos del sitio real.
 
@@ -261,6 +261,12 @@ Esa versión rechazaba el CDN `vod-fy-mod.crunchyrollcdn.com` utilizado por el r
 <summary>No aparece la píldora o se queda esperando subtítulos</summary>
 
 Comprueba que la extensión está activa y recarga el episodio tras instalar o actualizar. El sitio puede cambiar sus endpoints o usar un reproductor distinto. El archivo de subtítulos debe estar en una pista accesible; como alternativa, usa 📂 para cargar un archivo propio. No se abre una sesión de reproducción adicional para buscar pistas que el reproductor no entregue.
+</details>
+
+<details>
+<summary>El video se ve negro al aparecer el ejercicio o al repetir</summary>
+
+Se corrigieron regresiones reproducibles del estado de reproducción: búsquedas propias residuales, anclas conservadas al reemplazar el video y fallos de `play()` sin aviso. **La pantalla negra del reproductor real todavía no se ha reproducido en las pruebas y su causa no está confirmada.** Las pruebas con video sintético no reproducen el DRM ni demuestran que estos cambios resuelvan ese síntoma. Una captura protegida negra tampoco demuestra lo que ve el usuario. No se modifican DRM, solicitudes de medios, aceleración por hardware ni privacidad del navegador.
 </details>
 
 <details>
